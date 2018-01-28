@@ -213,7 +213,7 @@ import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-import model_unet
+from models import *
 
 if __name__ == "__main__":
   img_size = 256
@@ -225,8 +225,7 @@ if __name__ == "__main__":
   xtr, xval, ytr, yval = train_test_split(X_train, Y_train, test_size=0.1, random_state=7)
   train_generator, val_generator = generator(xtr, xval, ytr, yval, batch_size)
 
-  # model = Unet(img_size)
-  model = model_unet.Unet(img_size)
+  model = Unet(img_size)
   model.compile(optimizer='adam', loss=bce_dice_loss, metrics=[mean_iou])
 
   model.fit_generator(train_generator, steps_per_epoch=len(xtr) / 6, epochs=50,
