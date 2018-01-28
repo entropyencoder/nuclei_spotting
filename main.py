@@ -299,7 +299,7 @@ if __name__ == "__main__":
 
   earlystopper = EarlyStopping(patience=10, verbose=1)
   checkpointer = ModelCheckpoint('model_highest_val.h5', verbose=1, save_best_only=True)
-  model.fit_generator(train_generator, steps_per_epoch=len(xtr) / 6, epochs=100,
+  model.fit_generator(train_generator, steps_per_epoch=len(xtr) / 6, epochs=1, #00,
                       validation_data=val_generator, validation_steps=len(xval) / batch_size,
                       callbacks=[earlystopper, checkpointer])
   # # Reduced number of epochs only for test
@@ -322,8 +322,11 @@ if __name__ == "__main__":
     rle = list(prob_to_rles(preds_test_upsampled[n]))
     rles.extend(rle)
     new_test_ids.extend([id_] * len(rle))
+
+  import datetime
+
   sub = pd.DataFrame()
   sub['ImageId'] = new_test_ids
   sub['EncodedPixels'] = pd.Series(rles).apply(lambda x: ' '.join(str(y) for y in x))
-  sub.to_csv('sub.csv', index=False)
+  sub.to_csv('../output/submission_'+datetime.datetime.now().strftime("%Y%m%d_%H%M")+'.csv', index=False)
 
