@@ -1,14 +1,20 @@
 # coding: utf-8
 
-# This code is inspirated by https://www.kaggle.com/keegil/keras-u-net-starter-lb-0-277
+import tensorflow as tf
+import keras
 
-# In[ ]:
+# Disallow eager use of GPU memory
+if 'tensorflow' == keras.backend.backend():
+	config = tf.ConfigProto()
+	config.gpu_options.allow_growth = True
+	config.gpu_options.visible_device_list = "0"
+	keras.backend.tensorflow_backend.set_session(tf.Session(config=config))
 
 
+# Prepare training & test datasets
 import cv2
 import os
 import numpy as np
-
 
 def make_df(train_path, test_path, img_size):
   train_ids = next(os.walk(train_path))[1]
@@ -39,86 +45,9 @@ def make_df(train_path, test_path, img_size):
   return X_train, Y_train, X_test, sizes_test
 
 
-# # Define Unet model.
-#
-# # In[ ]:
-#
-#
-# from keras.layers.convolutional import Conv2D, Conv2DTranspose
-# from keras.layers.pooling import MaxPooling2D
-# from keras.layers.merge import concatenate
-# from keras.models import Model
-# from keras.layers import Input
-# from keras.layers.core import Dropout, Lambda
-#
-#
-# def Unet(img_size):
-#   inputs = Input((img_size, img_size, 3))
-#   s = Lambda(lambda x: x / 255)(inputs)
-#
-#   c1 = Conv2D(16, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(s)
-#   c1 = Dropout(0.1)(c1)
-#   c1 = Conv2D(16, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(c1)
-#   p1 = MaxPooling2D((2, 2))(c1)
-#
-#   c2 = Conv2D(32, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(p1)
-#   c2 = Dropout(0.1)(c2)
-#   c2 = Conv2D(32, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(c2)
-#   p2 = MaxPooling2D((2, 2))(c2)
-#
-#   c3 = Conv2D(64, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(p2)
-#   c3 = Dropout(0.2)(c3)
-#   c3 = Conv2D(64, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(c3)
-#   p3 = MaxPooling2D((2, 2))(c3)
-#
-#   c4 = Conv2D(128, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(p3)
-#   c4 = Dropout(0.2)(c4)
-#   c4 = Conv2D(128, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(c4)
-#   p4 = MaxPooling2D(pool_size=(2, 2))(c4)
-#
-#   c5 = Conv2D(256, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(p4)
-#   c5 = Dropout(0.3)(c5)
-#   c5 = Conv2D(256, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(c5)
-#
-#   u6 = Conv2DTranspose(128, (2, 2), strides=(2, 2), padding='same')(c5)
-#   u6 = concatenate([u6, c4])
-#   c6 = Conv2D(128, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(u6)
-#   c6 = Dropout(0.2)(c6)
-#   c6 = Conv2D(128, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(c6)
-#
-#   u7 = Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same')(c6)
-#   u7 = concatenate([u7, c3])
-#   c7 = Conv2D(64, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(u7)
-#   c7 = Dropout(0.2)(c7)
-#   c7 = Conv2D(64, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(c7)
-#
-#   u8 = Conv2DTranspose(32, (2, 2), strides=(2, 2), padding='same')(c7)
-#   u8 = concatenate([u8, c2])
-#   c8 = Conv2D(32, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(u8)
-#   c8 = Dropout(0.1)(c8)
-#   c8 = Conv2D(32, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(c8)
-#
-#   u9 = Conv2DTranspose(16, (2, 2), strides=(2, 2), padding='same')(c8)
-#   u9 = concatenate([u9, c1], axis=3)
-#   c9 = Conv2D(16, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(u9)
-#   c9 = Dropout(0.1)(c9)
-#   c9 = Conv2D(16, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same')(c9)
-#
-#   outputs = Conv2D(1, (1, 1), activation='sigmoid')(c9)
-#
-#   model = Model(inputs=[inputs], outputs=[outputs])
-#
-#   return model
-
-
 # Define generator. Using keras ImageDataGenerator.
 # You can change the method of data augmentation by changing data_gen_args.
-
-# In[ ]:
-
-
 from keras.preprocessing.image import ImageDataGenerator
-
 
 def generator(xtr, xval, ytr, yval, batch_size):
   data_gen_args = dict(horizontal_flip=True,
@@ -147,27 +76,11 @@ def generator(xtr, xval, ytr, yval, batch_size):
   return train_generator, val_generator
 
 
-# Define metrics and loss function.
-
-# In[ ]:
-
-
+# Define metric functions
 import tensorflow as tf
 import numpy as np
 from keras import backend as K
 from keras.losses import binary_crossentropy
-
-
-# def mean_iou(y_true, y_pred):
-#   prec = []
-#   for t in np.arange(0.5, 1.0, 0.05):
-#     y_pred_ = tf.to_int32(y_pred > t)
-#     score, up_opt = tf.metrics.mean_iou(y_true, y_pred_, 2)
-#     K.get_session().run(tf.local_variables_initializer())
-#     with tf.control_dependencies([up_opt]):
-#       score = tf.identity(score)
-#     prec.append(score)
-#   return K.mean(K.stack(prec))
 
 def iou_metric(y_true_in, y_pred_in, print_table=False):
   labels = label(y_true_in > 0.5)
@@ -235,6 +148,7 @@ def my_iou_metric(label, pred):
   return metric_value
 
 
+# Define a loss function
 def dice_coef(y_true, y_pred):
   smooth = 1.
   y_true_f = K.flatten(y_true)
@@ -242,16 +156,12 @@ def dice_coef(y_true, y_pred):
   intersection = K.sum(y_true_f * y_pred_f)
   return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
 
-
 def bce_dice_loss(y_true, y_pred):
   return 0.5 * binary_crossentropy(y_true, y_pred) - dice_coef(y_true, y_pred)
 
 
-# In[ ]:
-
-
+# Define a run-length encoding function
 from skimage.morphology import label
-
 
 def rle_encoding(x):
   dots = np.where(x.T.flatten() == 1)[0]
@@ -263,16 +173,13 @@ def rle_encoding(x):
     prev = b
   return run_lengths
 
-
 def prob_to_rles(x, cutoff=0.5):
   lab_img = label(x > cutoff)
   for i in range(1, lab_img.max() + 1):
     yield rle_encoding(lab_img == i)
 
 
-# In[ ]:
-
-
+# A main procedure to train & predict
 import cv2
 import os
 import pandas as pd
@@ -294,7 +201,6 @@ if __name__ == "__main__":
   train_generator, val_generator = generator(xtr, xval, ytr, yval, batch_size)
 
   model = Unet(img_size)
-  # model.compile(optimizer='adam', loss=bce_dice_loss, metrics=[mean_iou])
   model.compile(optimizer='adam', loss=bce_dice_loss, metrics=[my_iou_metric])
 
   earlystopper = EarlyStopping(patience=10, verbose=1)
@@ -302,9 +208,6 @@ if __name__ == "__main__":
   model.fit_generator(train_generator, steps_per_epoch=len(xtr) / 6, epochs=100,
                       validation_data=val_generator, validation_steps=len(xval) / batch_size,
                       callbacks=[earlystopper, checkpointer])
-  # # Reduced number of epochs only for test
-  # model.fit_generator(train_generator, steps_per_epoch=len(xtr) / 6, epochs=10,
-  #                     validation_data=val_generator, validation_steps=len(xval) / batch_size)
 
   model = load_model('model_highest_val.h5',
                      custom_objects={'my_iou_metric': my_iou_metric, 'bce_dice_loss': bce_dice_loss})
