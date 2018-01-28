@@ -299,7 +299,7 @@ if __name__ == "__main__":
 
   earlystopper = EarlyStopping(patience=10, verbose=1)
   checkpointer = ModelCheckpoint('model_highest_val.h5', verbose=1, save_best_only=True)
-  model.fit_generator(train_generator, steps_per_epoch=len(xtr) / 6, epochs=1, #00,
+  model.fit_generator(train_generator, steps_per_epoch=len(xtr) / 6, epochs=100,
                       validation_data=val_generator, validation_steps=len(xval) / batch_size,
                       callbacks=[earlystopper, checkpointer])
   # # Reduced number of epochs only for test
